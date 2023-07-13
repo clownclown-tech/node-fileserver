@@ -2,6 +2,11 @@
 <html>
 <head>
   <title>Datei-Upload</title>
+  <style>
+    ul {
+      list-style-type: none;
+    }
+  </style>
 </head>
 <body>
   <h1>Datei-Upload</h1>
@@ -10,12 +15,24 @@
     <button type="submit">Hochladen</button>
   </form>
 
-  <h1>Datei-Download</h1>
-  <a href="/download">Download Beispiel-Datei</a>
-
   <h1>Hochgeladene Dateien</h1>
   <ul id="file-list"></ul>
 
-
+  <script>
+    fetch('/uploaded')
+      .then(response => response.json())
+      .then(files => {
+        const fileList = document.getElementById('file-list');
+        files.forEach(file => {
+          const listItem = document.createElement('li');
+          const downloadLink = document.createElement('a');
+          downloadLink.href = '/download/' + file.filename;
+          downloadLink.textContent = file.originalname;
+          listItem.appendChild(downloadLink);
+          fileList.appendChild(listItem);
+        });
+      })
+      .catch(error => console.error(error));
+  </script>
 </body>
 </html>
