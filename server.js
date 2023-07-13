@@ -12,7 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 
-const filePath = 'uploadedFiles.json';
+const filePath = 'uploads/uploadedFiles.json';
 let uploadedFiles = [];
 
 // Load the uploaded files from the file on server start
