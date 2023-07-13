@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Datei-Upload</title>
+</head>
+<body>
+  <h1>Datei-Upload</h1>
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" required>
+    <button type="submit">Hochladen</button>
+  </form>
+
+  <h1>Datei-Download</h1>
+  <a href="/download">Download Beispiel-Datei</a>
+
+  <h1>Hochgeladene Dateien</h1>
+  <ul id="file-list"></ul>
+
+
+</body>
+</html>
