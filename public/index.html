@@ -18,6 +18,17 @@
   <h1>Hochgeladene Dateien</h1>
   <ul id="file-list"></ul>
 
+  <p>Deine IP-Adresse ist: <span id="ip-address"></span></p>
+
+  <script>
+    fetch('/get-ip')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('ip-address').innerText = data;
+      })
+      .catch(error => console.error('Error fetching IP address:', error));
+  </script>
+
   <script>
     fetch('/uploaded')
       .then(response => response.json())

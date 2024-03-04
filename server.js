@@ -74,6 +74,11 @@ app.get('/uploaded', (req, res) => {
   res.send(uploadedFiles);
 });
 
+app.get('/get-ip', (req, res) => {
+  const ipAddress = req.ip; // IP-Adresse des Clients abrufen
+  res.send(ipAddress); // IP-Adresse an den Client zurücksenden
+});
+
 app.listen(3000, () => {
   console.log('Server gestartet auf Port 3000');
 });
