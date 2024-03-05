@@ -3,9 +3,23 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const app = express();
-const upload = multer({ dest: 'uploads/' });
 
+// multer config
+// const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+destination: function (req, file, cb) {
+  cb(null, 'uploads/');
+},
+filename: function (req, file, cb) {
+  cb(null, file.originalname); // Keep the original filename
+}
+});
+
+const upload = multer({ storage: storage });
+
+
+
+const app = express();
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 
