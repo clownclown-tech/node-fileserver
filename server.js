@@ -1,11 +1,27 @@
 const express = require('express');
 const multer = require('multer');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
+const os = require('os');
+
+// Get the IP address of the current machine
+const networkInterfaces = os.networkInterfaces();
+let ipAddress;
+Object.keys(networkInterfaces).forEach((interfaceName) => {
+  networkInterfaces[interfaceName].forEach((interfaceData) => {
+    if (!interfaceData.internal && interfaceData.family === 'IPv4') {
+      ipAddress = interfaceData.address;
+    }
+  });
+});
+
+
+console.log('IP Address:', ipAddress);
+
 
 // multer config
-// const upload = multer({ dest: 'uploads/' });
 const storage = multer.diskStorage({
 destination: function (req, file, cb) {
   cb(null, 'uploads/');
@@ -58,12 +74,65 @@ function saveUploadedFiles() {
   });
 }
 
+//database for storing user IP and Credits
+function updateDatabase(ipAddress, fileName) {
+  const databaseFile = 'mydatabase.db';
+
+// Check if the database file exists
+if (!fs.existsSync(databaseFile)) {
+  const db = new sqlite3.Database(databaseFile);
+
+  db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS user_data (
+      ip_address TEXT PRIMARY KEY,
+      file_name TEXT,
+      credits INTEGER
+    )`);
+  });
+
+
+    // Check if the IP address already exists in the database
+    db.get('SELECT credits FROM user_data WHERE ip_address = ?', [ipAddress], (err, row) => {
+      if (err) {
+        console.error('Error checking database for existing IP:', err);
+        return;
+      }
+
+      if (row) {
+        // IP address exists, update the credits count without resetting to 0
+        const newCredits = Math.min(row.credits + 1, 5);
+        db.run('UPDATE user_data SET credits = ? WHERE ip_address = ?', [newCredits, ipAddress], (err) => {
+          if (err) {
+            console.error('Error updating database:', err);
+          } else {
+            console.log('Database updated successfully');
+          }
+        });
+      } else {
+        // IP address doesn't exist, insert new record
+        const stmt = db.prepare('INSERT INTO user_data (ip_address, file_name, credits) VALUES (?, ?, ?)');
+        stmt.run(ipAddress, fileName, Math.min(credits, 5), (err) => {
+          if (err) {
+            console.error('Error inserting into database:', err);
+          } else {
+            console.log('New record inserted into database');
+          }
+          stmt.finalize();
+        });
+      }
+    });
+  }}
+//getting clients info
+//const ipAddress = '192.168.1.100';
+const fileName = 'fake';
 
 
 
 
 
 
+
+// routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -72,6 +141,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
   if (req.file) {
     uploadedFiles.push(req.file);
     saveUploadedFiles();
+    updateDatabase(ipAddress, fileName, credits);
     res.redirect('/');
   } else {
     res.status(400).send('Es wurde keine Datei ausgewählt');
