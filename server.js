@@ -137,7 +137,7 @@ function decreaseCreditsForIp(clientIp) {
 
   const dbb = new sqlite3.Database('my_database.db');
 
-  const sql = 'UPDATE users SET credits = CASE WHEN credits > 0 THEN credits - 1 ELSE 5 END WHERE ip = ?';
+  const sql = 'UPDATE users SET credits = CASE WHEN credits > 0 THEN credits - 1 ELSE 0 END WHERE ip = ?';
 
   // Ensure the database connection is open before executing the query
   dbb.serialize(() => {
