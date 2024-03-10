@@ -133,6 +133,33 @@ function increaseCreditsForIp(clientIp) {
   });
 }
 
+function decreaseCreditsForIp(clientIp) {
+
+  const dbb = new sqlite3.Database('my_database.db');
+
+  const sql = 'UPDATE users SET credits = CASE WHEN credits > 0 THEN credits - 1 ELSE 5 END WHERE ip = ?';
+
+  // Ensure the database connection is open before executing the query
+  dbb.serialize(() => {
+    dbb.run(sql, [clientIp], function (err) {
+      if (err) {
+        console.error('Error updating credits:', err.message);
+      } else {
+        console.log(`Credits updated for IP (${clientIp}).`);
+      }
+
+      // Close the database connection after the operation is completed
+      dbb.close((closeErr) => {
+        if (closeErr) {
+          console.error('Error closing database:', closeErr.message);
+        } else {
+          console.log('Database connection closed.');
+        }
+      });
+    });
+  });
+}
+
 
 // routes
 app.get('/', (req, res) => {
@@ -151,6 +178,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 app.get('/download/:filename', (req, res) => {
+  decreaseCreditsForIp(clientIp)
   const { filename } = req.params;
   const filePath = path.join(__dirname, 'uploads', filename);
   res.download(filePath);
