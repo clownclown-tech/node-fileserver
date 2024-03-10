@@ -8,17 +8,16 @@ const os = require('os');
 
 // Get the IP address of the current machine
 const networkInterfaces = os.networkInterfaces();
-let ipAddress;
+let clientIp
 Object.keys(networkInterfaces).forEach((interfaceName) => {
   networkInterfaces[interfaceName].forEach((interfaceData) => {
     if (!interfaceData.internal && interfaceData.family === 'IPv4') {
-      ipAddress = interfaceData.address;
+      clientIp = interfaceData.address;
     }
   });
 });
 
-
-console.log('IP Address:', ipAddress);
+console.log('IP Address:', clientIp);
 
 
 // multer config
@@ -33,13 +32,9 @@ filename: function (req, file, cb) {
 
 const upload = multer({ storage: storage });
 
-
-
 const app = express();
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
-
-
 
 
 const filePath = 'uploads/uploadedFiles.json';
@@ -74,62 +69,69 @@ function saveUploadedFiles() {
   });
 }
 
-//database for storing user IP and Credits
-function updateDatabase(ipAddress, fileName) {
-  const databaseFile = 'mydatabase.db';
+//database for IPs
+// Connect to the database (creates a file named "my_database.db" if it doesn't exist)
+const db = new sqlite3.Database('my_database.db');
 
-// Check if the database file exists
-if (!fs.existsSync(databaseFile)) {
-  const db = new sqlite3.Database(databaseFile);
-
-  db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS user_data (
-      ip_address TEXT PRIMARY KEY,
-      file_name TEXT,
+// Create a table called "users" with two columns: "ip" and "credits"
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY,
+      ip TEXT UNIQUE,
       credits INTEGER
-    )`);
+    )
+  `);
+
+
+
+
+  // Insert a row with the client's IP and initial credits
+  const initialCredits = 0
+  db.run('INSERT INTO users (ip, credits) VALUES (?, ?)', [clientIp, initialCredits], (err) => {
+    if (err) {
+      console.error('Error inserting data:', err.message);
+    } else {
+      console.log(`Client IP (${clientIp}) registered. Initial credits: ${initialCredits}`);
+    }
   });
+});
 
+// Close the database connection
+db.close((err) => {
+  if (err) {
+    console.error('Error closing database:', err.message);
+  } else {
+    console.log('Database connection closed.');
+  }
+});
 
-    // Check if the IP address already exists in the database
-    db.get('SELECT credits FROM user_data WHERE ip_address = ?', [ipAddress], (err, row) => {
+function increaseCreditsForIp(clientIp) {
+
+  const dbb = new sqlite3.Database('my_database.db');
+
+  const sql = 'UPDATE users SET credits = CASE WHEN credits < 5 THEN credits + 1 ELSE 5 END WHERE ip = ?';
+
+  // Ensure the database connection is open before executing the query
+  dbb.serialize(() => {
+    dbb.run(sql, [clientIp], function (err) {
       if (err) {
-        console.error('Error checking database for existing IP:', err);
-        return;
-      }
-
-      if (row) {
-        // IP address exists, update the credits count without resetting to 0
-        const newCredits = Math.min(row.credits + 1, 5);
-        db.run('UPDATE user_data SET credits = ? WHERE ip_address = ?', [newCredits, ipAddress], (err) => {
-          if (err) {
-            console.error('Error updating database:', err);
-          } else {
-            console.log('Database updated successfully');
-          }
-        });
+        console.error('Error updating credits:', err.message);
       } else {
-        // IP address doesn't exist, insert new record
-        const stmt = db.prepare('INSERT INTO user_data (ip_address, file_name, credits) VALUES (?, ?, ?)');
-        stmt.run(ipAddress, fileName, Math.min(credits, 5), (err) => {
-          if (err) {
-            console.error('Error inserting into database:', err);
-          } else {
-            console.log('New record inserted into database');
-          }
-          stmt.finalize();
-        });
+        console.log(`Credits updated for IP (${clientIp}).`);
       }
+
+      // Close the database connection after the operation is completed
+      dbb.close((closeErr) => {
+        if (closeErr) {
+          console.error('Error closing database:', closeErr.message);
+        } else {
+          console.log('Database connection closed.');
+        }
+      });
     });
-  }}
-//getting clients info
-//const ipAddress = '192.168.1.100';
-const fileName = 'fake';
-
-
-
-
-
+  });
+}
 
 
 // routes
@@ -141,7 +143,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
   if (req.file) {
     uploadedFiles.push(req.file);
     saveUploadedFiles();
-    updateDatabase(ipAddress, fileName, credits);
+    increaseCreditsForIp(clientIp)
     res.redirect('/');
   } else {
     res.status(400).send('Es wurde keine Datei ausgewählt');
@@ -162,6 +164,8 @@ app.get('/get-ip', (req, res) => {
   const ipAddress = req.ip; // IP-Adresse des Clients abrufen
   res.send(ipAddress); // IP-Adresse an den Client zurücksenden
 });
+
+
 
 app.listen(3000, () => {
   console.log('Server gestartet auf Port 3000');
